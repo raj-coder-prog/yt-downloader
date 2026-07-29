@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant Native Downloader</title>
+    <title>High-Speed Media Downloader</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -31,8 +31,9 @@
             background: #2d2d2d;
             color: #fff;
             font-size: 16px;
+            text-align: center;
         }
-        button {
+        .action-button {
             width: 92%;
             padding: 14px;
             background-color: #ff0000;
@@ -42,24 +43,12 @@
             font-weight: bold;
             font-size: 16px;
             cursor: pointer;
-        }
-        #resultView {
-            display: none;
-            margin-top: 25px;
-            border-top: 1px solid #333;
-            padding-top: 20px;
-        }
-        .download-action-btn {
-            background-color: #00c853;
-            display: block;
             text-decoration: none;
-            color: white;
-            padding: 14px;
-            border-radius: 8px;
-            font-weight: bold;
-            width: 85%;
-            margin: 15px auto 0 auto;
-            text-align: center;
+            display: inline-block;
+            box-sizing: border-box;
+        }
+        .action-button:active {
+            background-color: #cc0000;
         }
     </style>
 </head>
@@ -67,14 +56,12 @@
 
     <div class="container">
         <h2>YouTube Downloader</h2>
-        <input type="text" id="videoLink" placeholder="Paste link here...">
-        <button onclick="processMediaLink()">Fetch Video Data</button>
-
-        <div id="resultView">
-            <h4 id="videoStatusTitle">Extracting Video Stream...</h4>
-            <!-- ⬇️ The standard click action is removed. JavaScript handles the local storage drop -->
-            <a id="nativeSaveBtn" class="download-action-btn" href="#" style="display:none;">⬇️ Save MP4 to Device</a>
-        </div>
+        <input type="text" id="videoLink" placeholder="Paste Video Link Here...">
+        
+        <!-- ⚡ THE NATIVE FIX: Clicking this button bypasses JS fetch entirely and routes natively -->
+        <a id="downloadTrigger" class="action-button" href="#" onclick="launchDownloadEngine(event)">
+            Convert & Download MP4
+        </a>
     </div>
 
     <script src="script.js"></script>
