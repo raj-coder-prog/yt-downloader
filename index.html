@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant Video Downloader</title>
+    <title>Instant Native Downloader</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -49,7 +49,7 @@
             border-top: 1px solid #333;
             padding-top: 20px;
         }
-        .download-link-btn {
+        .download-action-btn {
             background-color: #00c853;
             display: block;
             text-decoration: none;
@@ -68,14 +68,13 @@
     <div class="container">
         <h2>YouTube Downloader</h2>
         <input type="text" id="videoLink" placeholder="Paste link here...">
-        <button onclick="sendLinkToBackend()">Fetch Video Data</button>
+        <button onclick="processMediaLink()">Fetch Video Data</button>
 
-        <!-- 🏗️ REFRESH THIS SPECIFIC CONTAINER BLOCK ONLY -->
-<div id="resultView">
-    <h4 id="videoTitle">Processing Media...</h4>
-    <a id="downloadActionBtn" class="download-link-btn" href="#">⬇️ Tap to Open Download Portal</a>
-</div>
-
+        <div id="resultView">
+            <h4 id="videoStatusTitle">Extracting Video Stream...</h4>
+            <!-- ⬇️ The standard click action is removed. JavaScript handles the local storage drop -->
+            <a id="nativeSaveBtn" class="download-action-btn" href="#" style="display:none;">⬇️ Save MP4 to Device</a>
+        </div>
     </div>
 
     <script src="script.js"></script>

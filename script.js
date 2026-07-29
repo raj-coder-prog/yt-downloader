@@ -1,4 +1,4 @@
-async function sendLinkToBackend() {
+async function processMediaLink() {
     const inputUrl = document.getElementById('videoLink').value;
     if (!inputUrl) {
         alert('Please paste a working URL link first!');
@@ -6,17 +6,74 @@ async function sendLinkToBackend() {
     }
 
     const resultView = document.getElementById('resultView');
-    const videoTitle = document.getElementById('videoTitle');
-    const downloadActionBtn = document.getElementById('downloadActionBtn');
+    const videoStatusTitle = document.getElementById('videoStatusTitle');
+    const nativeSaveBtn = document.getElementById('nativeSaveBtn');
     
-    // 🎨 Update the on-screen text instructions
-    videoTitle.innerText = "Link processed! Click the button below:";
+    // Reset UI to processing mode
+    videoStatusTitle.innerText = "Connecting to unblocked stream node...";
     resultView.style.display = 'block';
+    nativeSaveBtn.style.display = 'none';
 
-    // 🔗 Format the clean destination link string path
-    const directPortalUrl = "https://save-tube.com" + encodeURIComponent(inputUrl);
-    
-    // ⚡ THE FIX: Assign the raw text address to the link. 
-    // We do NOT add any script-based click listeners here.
-    downloadActionBtn.href = directPortalUrl;
+    try {
+        // We route the extract query through a robust cross-origin bypass engine
+        const proxyGateway = "https://allorigins.win";
+        const targetExtractor = "https://cobalt.tools";
+
+        const response = await fetch(proxyGateway + encodeURIComponent(targetExtractor), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                url: inputUrl,
+                vQuality: "480", // Optimized 480p format ensures instant extraction on mobile pipelines
+                isAudioOnly: false
+            })
+        });
+
+        const packageData = await response.json();
+        // Parse the encoded payload body out of the bridge server response container
+        const cleanPayload = JSON.parse(packageData.contents);
+
+        if (cleanPayload && cleanPayload.url) {
+            videoStatusTitle.innerText = "Video Decoded Successfully!";
+            
+            // Inject the raw direct MP4 streaming file URL straight into our local button asset
+            nativeSaveBtn.href = cleanPayload.url;
+            
+            // Instructs your phone browser to save the item directly rather than launching a window
+            nativeSaveBtn.setAttribute('download', 'video.mp4');
+            nativeSaveBtn.style.display = 'block';
+        } else {
+            // Drop directly into a clean automatic mirror stream proxy layout if endpoint is crowded
+            videoStatusTitle.innerText = "Port congested. Trying mirror pipeline node...";
+            executeFallbackStream(inputUrl);
+        }
+
+    } catch (err) {
+         executeFallbackStream(inputUrl);
+    }
+}
+
+async function executeFallbackStream(videoLinkUrl) {
+    const videoStatusTitle = document.getElementById('videoStatusTitle');
+    const nativeSaveBtn = document.getElementById('nativeSaveBtn');
+
+    try {
+        const fallbackEngineUrl = "https://devextent.com" + encodeURIComponent(videoLinkUrl);
+        const response = await fetch(fallbackEngineUrl);
+        const data = await response.json();
+
+        if (data && data.download_url) {
+            videoStatusTitle.innerText = data.title || "Media File Decoded!";
+            nativeSaveBtn.href = data.download_url;
+            nativeSaveBtn.setAttribute('download', 'video.mp4');
+            nativeSaveBtn.style.display = 'block';
+        } else {
+            videoStatusTitle.innerText = "Conversion nodes currently throttled. Try a different video link.";
+        }
+    } catch(e) {
+        videoStatusTitle.innerText = "All native web extraction systems are busy. Try again shortly.";
+    }
 }
