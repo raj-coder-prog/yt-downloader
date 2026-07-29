@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instant Video Downloader</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 450px;
+            margin: 40px auto;
+            background: #1e1e1e;
+            padding: 30px 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        h2 { margin-bottom: 20px; color: #ff3333; }
+        input {
+            width: 85%;
+            padding: 14px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #2d2d2d;
+            color: #fff;
+            font-size: 16px;
+        }
+        button {
+            width: 92%;
+            padding: 14px;
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #resultView {
+            display: none;
+            margin-top: 25px;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+        .download-link-btn {
+            background-color: #00c853;
+            display: block;
+            text-decoration: none;
+            color: white;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            width: 85%;
+            margin: 15px auto 0 auto;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>YouTube Downloader</h2>
+        <input type="text" id="videoLink" placeholder="Paste link here...">
+        <button onclick="sendLinkToBackend()">Fetch Video Data</button>
+
+        <!-- 🏗️ REFRESH THIS SPECIFIC CONTAINER BLOCK ONLY -->
+<div id="resultView">
+    <h4 id="videoTitle">Processing Media...</h4>
+    <a id="downloadActionBtn" class="download-link-btn" href="#">⬇️ Tap to Open Download Portal</a>
+</div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
