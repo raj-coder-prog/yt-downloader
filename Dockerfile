@@ -1,22 +1,16 @@
+# Stage 1: Get the official Node image to copy its files
+FROM node:20-slim AS node_source
+
+# Stage 2: Build our actual Python application container
 FROM python:3.11-slim
 
-# Install core extraction utilities needed to unpack binaries
-RUN apt-get update && apt-get install -y \
-    curl \
-    xz-utils \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Copy the pre-built, ready-to-use Node.js binaries directly from Stage 1
+COPY --from=node_source /usr/local/bin/node /usr/local/bin/node
+COPY --from=node_source /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 WORKDIR /app
 
-# Download and extract standalone Node.js directly into our app directory
-RUN mkdir -p /app/node_runtime && \
-    curl -sL https://nodejs.org | tar -xJ --strip-components=1 -C /app/node_runtime
-
-# Permanently inject this custom local Node folder directly into the container's environment PATH
-ENV PATH="/app/node_runtime/bin:${PATH}"
-
-# Install requirements
+# Install standard requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir --upgrade yt-dlp
