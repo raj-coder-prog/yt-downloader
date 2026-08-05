@@ -3,7 +3,6 @@ from flask import Flask, render_template_string
 
 app = Flask(__name__)
 
-# Complete standalone iframe bypass layout
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -25,10 +24,16 @@ HTML_TEMPLATE = """
         <h2>YouTube Downloader Portal</h2>
         <p>Bypassing server restrictions via integrated premium conversion link engine.</p>
     </div>
-    
-    <!-- Embeds an active, continuously-updated extraction engine directly into your Render layout -->
     <div class="iframe-container">
         <iframe src="https://itubego.com" allowfullscreen></iframe>
     </div>
 </body>
 </html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(HTML_TEMPLATE)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
