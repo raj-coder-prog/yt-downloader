@@ -20,7 +20,7 @@ HTML_TEMPLATE = """
         p { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.4; }
         input[type="text"] { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         input[type="text"]:focus { border-color: #ff0000; outline: none; }
-        button { background: #ff0000; color: white; border: none; padding: 14px; font-size: 16px; font-weight: 6px; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
+        button { background: #ff0000; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
         button:hover { background: #cc0000; }
         .status-msg { margin-top: 15px; font-size: 13px; color: #888; display: none; }
     </style>
@@ -55,11 +55,9 @@ def download():
     if not video_url:
         return "URL parameter missing", 400
 
-    # Retrieve Netscape string block directly from Render Environment Config
     cookie_data = os.environ.get('YT_COOKIES')
     cookie_path = None
 
-    # Provision transient sandboxed cookie schema mapping
     if cookie_data:
         try:
             temp_cookie_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt')
@@ -69,10 +67,11 @@ def download():
         except Exception as e:
             return f"Internal configuration mapping failure: {str(e)}", 500
 
-    # Core manifest resolver configurations
+    # CHANGED: Uses standard progressive formats ('b' or 'mp4') to guarantee 
+    # it pulls streams that contain both video AND audio out of the box without FFmpeg.
     cmd = [
         'yt-dlp',
-        '-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]', 
+        '-f', 'b[ext=mp4]/b', 
         '-g', 
         video_url
     ]
@@ -81,21 +80,18 @@ def download():
         cmd.extend(['--cookies', cookie_path])
     
     try:
-        # Request localized link signatures directly from target API endpoint
         stream_out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').strip()
         stream_urls = stream_out.split('\n')
-        # Filter endpoints, choosing primary unified stream blocks
-        target_stream = stream_urls[0]
+        target_stream = stream_urls[0]  # Take the top valid fallback url
     except subprocess.CalledProcessError as e:
         return f"Extraction Engine Failure: {e.output.decode('utf-8')}", 500
     except Exception as e:
         return f"Error executing pipeline sequence: {str(e)}", 500
     finally:
-        # Tear down sensitive context artifacts instantly from deployment stack memory
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Secondary lookup block for parsing native dynamic video metadata
+    # Fetch title
     try:
         title_cmd = ['yt-dlp', '--get-title', video_url]
         if cookie_data:
@@ -112,7 +108,7 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Establish localized 302 Handshake pointing directly to global asset stream servers
+    # Redirect user directly to the extracted mp4 file stream link
     response = Response(status=302)
     response.headers['Location'] = target_stream
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}.mp4"'
