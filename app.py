@@ -1,44 +1,122 @@
 import os
 import requests
-from flask import Flask, request, Response, render_template_string
+from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 
-# Ultra-clean ad-free layout interface
+# Complete premium interface design matching corporate download suites
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clean Video Downloader</title>
+    <title>SaveFrom Pro - Premium Video Downloader Clone</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f9fa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 420px; text-align: center; }
-        h2 { color: #1a1a1a; margin-bottom: 8px; font-size: 24px; }
-        p { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.4; }
-        input[type="text"] { width: 100%; padding: 14px; margin-bottom: 16px; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
-        input[type="text"]:focus { border-color: #00d26a; outline: none; }
-        button { background: #00d26a; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
-        button:hover { background: #00b359; }
-        .status-msg { margin-top: 15px; font-size: 13px; color: #888; display: none; }
-        .error-msg { margin-top: 15px; font-size: 13px; color: #ff0000; display: none; }
+        :root { --primary: #00d26a; --primary-hover: #00b359; --bg: #f4f6f8; --card: #ffffff; --text: #1e293b; --text-muted: #64748b; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        .navbar { background: var(--card); border-bottom: 1px solid #e2e8f0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .logo { font-size: 22px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 6px; text-decoration: none; }
+        .logo span { color: var(--text); }
+        .badge { background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 20px; text-transform: uppercase; }
+        .main-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+        .headline { font-size: 36px; font-weight: 800; tracking: -0.5px; margin-bottom: 8px; }
+        .subheadline { color: var(--text-muted); font-size: 16px; margin-bottom: 32px; max-width: 500px; line-height: 1.5; }
+        .search-wrapper { background: var(--card); border-radius: 16px; padding: 8px; display: flex; width: 100%; max-width: 580px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05); box-sizing: border-box; margin-bottom: 24px; border: 1px solid #e2e8f0; }
+        .search-wrapper input { flex: 1; border: none; padding: 16px; font-size: 16px; outline: none; border-radius: 12px; min-width: 0; }
+        .search-wrapper button { background: var(--primary); color: white; border: none; padding: 0 28px; font-size: 15px; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .search-wrapper button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .result-card { display: none; background: var(--card); border-radius: 16px; border: 1px solid #e2e8f0; padding: 24px; width: 100%; max-width: 564px; text-align: left; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); box-sizing: border-box; }
+        .video-meta { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }
+        .video-icon { background: #fee2e2; color: #ef4444; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+        .video-details { min-width: 0; }
+        .video-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .video-duration { color: var(--text-muted); font-size: 13px; }
+        .action-btn { display: block; text-align: center; background: #2563eb; color: white; text-decoration: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; transition: background 0.2s; }
+        .action-btn:hover { background: #1d4ed8; }
+        .loader { display: none; font-size: 14px; color: var(--text-muted); font-weight: 500; margin-top: 10px; }
+        .error-banner { display: none; color: #b91c1c; background: #fef2f2; border: 1px solid #fca5a5; padding: 12px; border-radius: 8px; font-size: 14px; width: 100%; max-width: 540px; text-align: center; margin-top: 10px; }
+        .footer { background: var(--card); border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; font-size: 13px; color: var(--text-muted); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Clean Downloader</h2>
-        <p>100% Ad-Free Direct Stream Extractor Pipeline.</p>
-        <form action="/download" method="GET" onsubmit="showLoading()">
-            <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
-            <button type="submit" id="dl-btn">Download MP4 File</button>
-        </form>
-        <div id="loading" class="status-msg">Extracting clean direct stream link... Please wait.</div>
-    </div>
+
+    <nav class="navbar">
+        <a href="/" class="logo">SaveFrom <span>Pro</span></a>
+        <div class="badge">Ad-Free Link Engine</div>
+    </nav>
+
+    <main class="main-hero">
+        <div class="headline">Online Video Downloader</div>
+        <div class="subheadline">Paste any video URL to instantly generate clean, direct MP4 media stream links without page tracking or popup advertisements.</div>
+        
+        <div class="search-wrapper">
+            <input type="text" id="target-url" placeholder="Paste media source link here..." required>
+            <button type="button" id="submit-btn" onclick="processExtraction()">Extract Media</button>
+        </div>
+
+        <div id="status-loader" class="loader">Querying data cluster matrix... Please wait.</div>
+        <div id="error-box" class="error-banner"></div>
+
+        <div id="output-card" class="result-card">
+            <div class="video-meta">
+                <div class="video-icon">▶</div>
+                <div class="video-details">
+                    <div id="res-title" class="video-title">Loading title parameters...</div>
+                    <div class="video-duration">Format container: High-Definition MP4</div>
+                </div>
+            </div>
+            <a href="#" id="direct-dl-link" class="action-btn" target="_blank" rel="noopener noreferrer">Download Video File</a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        &copy; 2026 SaveFrom Pro Clone Engine Portal Setup. Standard Open Core Distribution Framework.
+    </footer>
+
     <script>
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('dl-btn').innerText = 'Processing Stream...';
+        async function processExtraction() {
+            const urlVal = document.getElementById('target-url').value.trim();
+            const btn = document.getElementById('submit-btn');
+            const loader = document.getElementById('status-loader');
+            const errorBox = document.getElementById('error-box');
+            const outCard = document.getElementById('output-card');
+
+            if(!urlVal) { alert('Please insert a media tracking link.'); return; }
+
+            // Reset view state
+            errorBox.style.display = 'none';
+            outCard.style.display = 'none';
+            loader.style.display = 'block';
+            btn.disabled = true;
+            btn.innerText = 'Extracting...';
+
+            try {
+                const response = await fetch(`/api/extract?url=${encodeURIComponent(urlVal)}`);
+                const result = await response.json();
+
+                if(!response.ok || !result.success) {
+                    throw new Error(result.error || 'Failed to extract download properties.');
+                }
+
+                // Inject extracted values smoothly
+                document.getElementById('res-title').innerText = result.title;
+                const dlLink = document.getElementById('direct-dl-link');
+                dlLink.href = result.download_url;
+                
+                // Forces browser file downscaling trigger natively 
+                dlLink.setAttribute('download', result.title + '.mp4');
+
+                loader.style.display = 'none';
+                outCard.style.display = 'block';
+            } catch (err) {
+                loader.style.display = 'none';
+                errorBox.style.display = 'block';
+                errorBox.innerText = err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Extract Media';
+            }
         }
     </script>
 </body>
@@ -49,48 +127,38 @@ HTML_TEMPLATE = """
 def home():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route('/download')
-def download():
+@app.route('/api/extract')
+def extract_api():
     video_url = request.args.get('url')
     if not video_url:
-        return "URL parameter missing", 400
+        return jsonify({"success": False, "error": "URL parameter is missing"}), 400
 
-    # Clean API pipeline query format that doesn't block Render instances
+    # Payload arguments tracking clean proxy network nodes
     api_url = "https://savefrom.net"
-    payload = {
-        "url": video_url,
-        "format": "mp4",
-        "quality": "720"
-    }
+    payload = {"url": video_url, "format": "mp4", "quality": "720"}
     
     try:
-        # Backend securely converts the media link to skip frontend popup ads completely
         response = requests.post(api_url, json=payload, timeout=12)
         data = response.json()
-        
-        # Parse the raw direct link from the signature array
         download_url = data.get('url') or data.get('links', [{}])[0].get('url')
-        title = data.get('title', 'video')
+        title = data.get('title', 'Converted_Media_File')
     except Exception:
-        # Fallback processing cluster
+        # High availability alternative bridge
         try:
-            alt_res = requests.get(f"https://workers.dev{video_url}", timeout=10)
-            download_url = alt_res.json().get('url')
-            title = alt_res.json().get('title', 'video')
+            alt = requests.post('https://wuk.sh', json={'url': video_url}, headers={'Accept': 'application/json', 'Content-Type': 'application/json'}, timeout=10)
+            download_url = alt.json().get('url')
+            title = alt.json().get('text', 'Download_Asset')
         except Exception as e:
-            return f"Ad-free translation engine timeout. Please reload and try again: {str(e)}", 500
+            return jsonify({"success": False, "error": f"API translation infrastructure timeout: {str(e)}"}), 500
 
     if not download_url:
-        return "Unable to isolate a clean ad-free stream link for this specific video.", 400
+        return jsonify({"success": False, "error": "Unable to isolate clean streaming source properties for this file URL."}), 400
 
-    # Filter bad symbols from title
-    filename = "".join([c for c in title if c.isalnum() or c in ' .-_']).rstrip()
-
-    # Instant browser redirect handshake to pull the video directly without loading ad containers
-    response = Response(status=302)
-    response.headers['Location'] = download_url
-    response.headers['Content-Disposition'] = f'attachment; filename="{filename}.mp4"'
-    return response
+    return jsonify({
+        "success": True,
+        "title": title,
+        "download_url": download_url
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
