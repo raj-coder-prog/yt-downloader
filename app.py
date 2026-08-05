@@ -1,10 +1,9 @@
 import os
-import subprocess
-import tempfile
-from flask import Flask, request, Response, render_template_string
+from flask import Flask, render_template_string
 
 app = Flask(__name__)
 
+# Complete client-side application that bypasses Render's blocked IP entirely
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -21,125 +20,85 @@ HTML_TEMPLATE = """
         input[type="text"]:focus { border-color: #ff0000; outline: none; }
         button { background: #ff0000; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
         button:hover { background: #cc0000; }
-        .status-msg { margin-top: 15px; font-size: 13px; color: #888; display: none; }
+        .status-msg { margin-top: 15px; font-size: 14px; font-weight: bold; color: #ff0000; display: none; }
+        .success-box { margin-top: 20px; display: none; background: #f0fff4; border: 1px solid #c6f6d5; padding: 15px; border-radius: 6px; }
+        .download-link { display: inline-block; background: #38a169; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-top: 10px; }
+        .download-link:hover { background: #2f855a; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>YouTube Downloader</h2>
-        <p>Direct device browser download extraction pipeline.</p>
-        <form action="/download" method="GET" onsubmit="showLoading()">
-            <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
-            <button type="submit" id="dl-btn">Extract & Download MP4</button>
-        </form>
-        <div id="loading" class="status-msg">Extracting clean direct video link... Please wait.</div>
+        <p>Bypassing server blocks via direct local client stream extraction.</p>
+        <div id="downloader-form">
+            <input type="text" id="video-url" placeholder="Paste YouTube Video Link Here" required>
+            <button type="button" onclick="extractVideo()">Extract Video MP4</button>
+        </div>
+        <div id="loading" class="status-msg" style="color: #666;">Processing handshake from your device connection...</div>
+        <div id="error" class="status-msg"></div>
+        
+        <div id="success" class="success-box">
+            <div style="color: #2f855a; font-weight: bold;" id="video-title">Video Stream Ready!</div>
+            <a href="#" id="dl-anchor" class="download-link" download>Save MP4 to Device</a>
+        </div>
     </div>
+
     <script>
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('dl-btn').innerText = 'Processing Stream...';
+        async function extractVideo() {
+            const urlInput = document.getElementById('video-url').value.trim();
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const successDiv = document.getElementById('success');
+            const dlAnchor = document.getElementById('dl-anchor');
+
+            if (!urlInput) {
+                alert('Please paste a valid URL');
+                return;
+            }
+
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            try {
+                // Call a clean public open-source API pipeline directly from the user's browser, 
+                // completely bypassing the blocked Render backend IP address network.
+                const response = await fetch(`https://cobalt.tools`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: urlInput,
+                        videoQuality: '720',
+                        downloadMode: 'video'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'stream' || data.status === 'redirect') {
+                    loadingDiv.style.display = 'none';
+                    successDiv.style.display = 'block';
+                    dlAnchor.href = data.url;
+                } else {
+                    throw new Error(data.text || 'Extraction failed. Try a different video link.');
+                }
+            } catch (err) {
+                loadingDiv.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = 'Error: ' + err.message;
+            }
         }
     </script>
 </body>
 </html>
 """
 
-def sanitize_mobile_cookies(raw_cookies):
-    if not raw_cookies:
-        return ""
-    cleaned_lines = []
-    current_line = ""
-    raw_lines = raw_cookies.split('\n')
-    for line in raw_lines:
-        line_str = line.strip()
-        if not line_str:
-            continue
-        if (line_str.startswith('.') or line_str.startswith('youtube.com') or line_str.startswith('#')):
-            if current_line:
-                cleaned_lines.append(current_line)
-            current_line = line_str
-        else:
-            current_line += line_str
-    if current_line:
-        cleaned_lines.append(current_line)
-    return "\n".join(cleaned_lines)
-
 @app.route('/')
 def home():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route('/download')
-def download():
-    video_url = request.args.get('url')
-    if not video_url:
-        return "URL parameter missing", 400
-
-    raw_cookie_data = os.environ.get('YT_COOKIES')
-    cookie_path = None
-
-    if raw_cookie_data:
-        try:
-            sanitized_data = sanitize_mobile_cookies(raw_cookie_data)
-            temp_cookie_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt')
-            temp_cookie_file.write(sanitized_data)
-            temp_cookie_file.close()
-            cookie_path = temp_cookie_file.name
-        except Exception as e:
-            return f"Internal cookie initialization failure: {str(e)}", 500
-
-    # FIX: Removed incompatible 'ios' client. 
-    # Tells yt-dlp to extract the raw web stream URL directly using the cookie file natively.
-    cmd = [
-        'yt-dlp',
-        '--no-check-certificates',
-        '-f', 'best',
-        '-g', 
-        video_url
-    ]
-
-    if cookie_path:
-        cmd.extend(['--cookies', cookie_path])
-    
-    try:
-        stream_out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').strip()
-        # Grabs the direct video stream links
-        target_stream = stream_out.split('\n')[0]
-    except subprocess.CalledProcessError as e:
-        return f"Extraction Engine Failure: {e.output.decode('utf-8')}", 500
-    except Exception as e:
-        return f"Error executing pipeline sequence: {str(e)}", 500
-    finally:
-        if cookie_path and os.path.exists(cookie_path):
-            os.remove(cookie_path)
-
-    # Fetch clean title for filename configuration
-    try:
-        title_cmd = [
-            'yt-dlp', 
-            '--no-check-certificates',
-            '--get-title', 
-            video_url
-        ]
-        if raw_cookie_data:
-            sanitized_data = sanitize_mobile_cookies(raw_cookie_data)
-            with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
-                f.write(sanitized_data)
-                cookie_path = f.name
-            title_cmd.extend(['--cookies', cookie_path])
-            
-        filename = subprocess.check_output(title_cmd, stderr=subprocess.DEVNULL).decode('utf-8').strip()
-        filename = "".join([c for c in filename if c.isalnum() or c in ' .-_']).rstrip()
-    except:
-        filename = "cloud_download"
-    finally:
-        if cookie_path and os.path.exists(cookie_path):
-            os.remove(cookie_path)
-
-    # Directly passes the streaming url right to your browser's download manager
-    response = Response(status=302)
-    response.headers['Location'] = target_stream
-    response.headers['Content-Disposition'] = f'attachment; filename="{filename}.mp4"'
-    return response
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
