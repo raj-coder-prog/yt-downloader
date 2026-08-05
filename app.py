@@ -1,11 +1,11 @@
 import os
 import subprocess
 import tempfile
+import re
 from flask import Flask, request, Response, render_template_string
 
 app = Flask(__name__)
 
-# Polished clean UI layout with visual response loaders
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -28,7 +28,7 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <h2>YouTube Downloader</h2>
-        <p>Direct high-speed proxy stream pipeline to your device storage bypass.</p>
+        <p>Mobile-optimized direct streaming pipeline.</p>
         <form action="/download" method="GET" onsubmit="showLoading()">
             <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
             <button type="submit" id="dl-btn">Extract & Download MP4</button>
@@ -45,6 +45,43 @@ HTML_TEMPLATE = """
 </html>
 """
 
+def sanitize_mobile_cookies(raw_cookies):
+    """
+    Cleans up broken Netscape cookies caused by mobile clipboard wrapping.
+    Reconstructs wrapped data back into flat single lines.
+    """
+    if not raw_cookies:
+        return ""
+    
+    cleaned_lines = []
+    current_line = ""
+    
+    # Split text by individual lines
+    raw_lines = raw_cookies.split('\n')
+    
+    for line in raw_lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+            
+        # Check if this line starts a true Netscape row (e.g. .youtube.com, youtube.com, or a comment)
+        if (line_str.startswith('.') or 
+            line_str.startswith('youtube.com') or 
+            line_str.startswith('#')):
+            
+            if current_line:
+                cleaned_lines.append(current_line)
+            current_line = line_str
+        else:
+            # If it doesn't start properly, it's a broken wrapped fragment.
+            # Append it straight to the previous cookie data block without spacing.
+            current_line += line_str
+
+    if current_line:
+        cleaned_lines.append(current_line)
+        
+    return "\n".join(cleaned_lines)
+
 @app.route('/')
 def home():
     return render_template_string(HTML_TEMPLATE)
@@ -55,20 +92,22 @@ def download():
     if not video_url:
         return "URL parameter missing", 400
 
-    cookie_data = os.environ.get('YT_COOKIES')
+    raw_cookie_data = os.environ.get('YT_COOKIES')
     cookie_path = None
 
-    if cookie_data:
+    if raw_cookie_data:
         try:
+            # Automatically repair your mobile formatting mistakes here!
+            sanitized_data = sanitize_mobile_cookies(raw_cookie_data)
+            
             temp_cookie_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt')
-            temp_cookie_file.write(cookie_data.strip())
+            temp_cookie_file.write(sanitized_data)
             temp_cookie_file.close()
             cookie_path = temp_cookie_file.name
         except Exception as e:
-            return f"Internal configuration mapping failure: {str(e)}", 500
+            return f"Internal cookie mapping failure: {str(e)}", 500
 
-    # CHANGED: Uses standard progressive formats ('b' or 'mp4') to guarantee 
-    # it pulls streams that contain both video AND audio out of the box without FFmpeg.
+    # Command using standard pre-merged mobile-friendly mp4 formats (b)
     cmd = [
         'yt-dlp',
         '-f', 'b[ext=mp4]/b', 
@@ -82,7 +121,7 @@ def download():
     try:
         stream_out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').strip()
         stream_urls = stream_out.split('\n')
-        target_stream = stream_urls[0]  # Take the top valid fallback url
+        target_stream = stream_urls[0]
     except subprocess.CalledProcessError as e:
         return f"Extraction Engine Failure: {e.output.decode('utf-8')}", 500
     except Exception as e:
@@ -91,12 +130,13 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Fetch title
+    # Fetch title dynamically
     try:
         title_cmd = ['yt-dlp', '--get-title', video_url]
-        if cookie_data:
+        if raw_cookie_data:
+            sanitized_data = sanitize_mobile_cookies(raw_cookie_data)
             with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
-                f.write(cookie_data.strip())
+                f.write(sanitized_data)
                 cookie_path = f.name
             title_cmd.extend(['--cookies', cookie_path])
             
@@ -108,7 +148,7 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Redirect user directly to the extracted mp4 file stream link
+    # Handshake direct redirect 
     response = Response(status=302)
     response.headers['Location'] = target_stream
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}.mp4"'
