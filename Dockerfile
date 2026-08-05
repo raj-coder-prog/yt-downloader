@@ -1,10 +1,10 @@
 FROM python:3.11-slim
 
-# Install system dependencies and create a permanent symlink for 'node'
+# Install system dependencies and force the creation/overwriting of the 'node' symlink
 RUN apt-get update && apt-get install -y \
     curl \
     nodejs \
-    && ln -s /usr/bin/nodejs /usr/bin/node \
+    && ln -sf /usr/bin/nodejs /usr/bin/node \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
