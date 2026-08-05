@@ -27,12 +27,12 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <h2>YouTube Downloader</h2>
-        <p>Mobile-optimized cloud stream pipeline bypass.</p>
+        <p>Direct device browser download extraction pipeline.</p>
         <form action="/download" method="GET" onsubmit="showLoading()">
             <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
             <button type="submit" id="dl-btn">Extract & Download MP4</button>
         </form>
-        <div id="loading" class="status-msg">Fetching video stream link... Please wait.</div>
+        <div id="loading" class="status-msg">Extracting clean direct video link... Please wait.</div>
     </div>
     <script>
         function showLoading() {
@@ -87,13 +87,12 @@ def download():
         except Exception as e:
             return f"Internal cookie initialization failure: {str(e)}", 500
 
-    # FIX: Forces yt-dlp to bypass normal signature challenges by emulating an iOS device client.
-    # Also requests the absolute best video+audio combined progressive format stream available.
+    # FIX: Removed incompatible 'ios' client. 
+    # Tells yt-dlp to extract the raw web stream URL directly using the cookie file natively.
     cmd = [
         'yt-dlp',
         '--no-check-certificates',
-        '--extractor-args', 'youtube:player_client=ios',
-        '-f', 'ext=mp4/b',
+        '-f', 'best',
         '-g', 
         video_url
     ]
@@ -103,7 +102,8 @@ def download():
     
     try:
         stream_out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').strip()
-        target_stream = stream_out.split('\n')[0]  # Safely target the first clean resolved stream url
+        # Grabs the direct video stream links
+        target_stream = stream_out.split('\n')[0]
     except subprocess.CalledProcessError as e:
         return f"Extraction Engine Failure: {e.output.decode('utf-8')}", 500
     except Exception as e:
@@ -112,12 +112,11 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Fetch title for the file name mapping
+    # Fetch clean title for filename configuration
     try:
         title_cmd = [
             'yt-dlp', 
             '--no-check-certificates',
-            '--extractor-args', 'youtube:player_client=ios',
             '--get-title', 
             video_url
         ]
@@ -136,7 +135,7 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Send the 302 streaming redirect sequence to the client device
+    # Directly passes the streaming url right to your browser's download manager
     response = Response(status=302)
     response.headers['Location'] = target_stream
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}.mp4"'
