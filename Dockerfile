@@ -1,12 +1,10 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Install system dependencies including curl and Node.js
+# Install system dependencies including Node.js directly from Debian repositories
 RUN apt-get update && apt-get install -y \
     curl \
-    xz-utils \
-    && curl -sL https://nodesource.com | bash - \
-    && apt-get install -y nodejs \
+    nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
