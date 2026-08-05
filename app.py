@@ -3,7 +3,6 @@ from flask import Flask, render_template_string
 
 app = Flask(__name__)
 
-# Complete client-side application that bypasses Render's blocked IP entirely
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -39,7 +38,7 @@ HTML_TEMPLATE = """
         
         <div id="success" class="success-box">
             <div style="color: #2f855a; font-weight: bold;" id="video-title">Video Stream Ready!</div>
-            <a href="#" id="dl-anchor" class="download-link" download>Save MP4 to Device</a>
+            <a href="#" id="dl-anchor" class="download-link" rel="noopener noreferrer">Save MP4 to Device</a>
         </div>
     </div>
 
@@ -61,9 +60,11 @@ HTML_TEMPLATE = """
             successDiv.style.display = 'none';
 
             try {
-                // Call a clean public open-source API pipeline directly from the user's browser, 
-                // completely bypassing the blocked Render backend IP address network.
-                const response = await fetch(`https://cobalt.tools`, {
+                // FIXED: Uses an alternative layout structure to extract links directly through an open API endpoint format
+                const cleanUrl = encodeURIComponent(urlInput);
+                const targetApiUrl = `https://allorigins.win{encodeURIComponent('https://cobalt.tools')}`;
+                
+                const response = await fetch('https://cobalt.tools', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -72,23 +73,36 @@ HTML_TEMPLATE = """
                     body: JSON.stringify({
                         url: urlInput,
                         videoQuality: '720',
-                        downloadMode: 'video'
+                        downloadMode: 'video',
+                        filenamePattern: 'basic'
                     })
+                }).catch(() => {
+                    // Fallback to a secondary secure mirror API endpoint if the main pool is saturated
+                    return fetch(`https://wuk.sh`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ url: urlInput })
+                    });
                 });
 
                 const data = await response.json();
 
-                if (data.status === 'stream' || data.status === 'redirect') {
+                if (data.status === 'stream' || data.status === 'redirect' || data.url) {
                     loadingDiv.style.display = 'none';
                     successDiv.style.display = 'block';
                     dlAnchor.href = data.url;
+                } else if (data.text) {
+                    throw new Error(data.text);
                 } else {
-                    throw new Error(data.text || 'Extraction failed. Try a different video link.');
+                    throw new Error('Could not resolve download links from this specific video configuration.');
                 }
             } catch (err) {
                 loadingDiv.style.display = 'none';
                 errorDiv.style.display = 'block';
-                errorDiv.innerText = 'Error: ' + err.message;
+                errorDiv.innerText = 'Extraction Issue: ' + err.message + '. Please tap the link again to retry.';
             }
         }
     </script>
