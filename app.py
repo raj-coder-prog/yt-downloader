@@ -5,7 +5,6 @@ from flask import Flask, request, Response, render_template_string
 
 app = Flask(__name__)
 
-# Polished clean UI layout with visual response loaders
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -33,7 +32,7 @@ HTML_TEMPLATE = """
             <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
             <button type="submit" id="dl-btn">Extract & Download MP4</button>
         </form>
-        <div id="loading" class="status-msg">Solving signature handshake... Please wait.</div>
+        <div id="loading" class="status-msg">Fetching video stream link... Please wait.</div>
     </div>
     <script>
         function showLoading() {
@@ -46,10 +45,6 @@ HTML_TEMPLATE = """
 """
 
 def sanitize_mobile_cookies(raw_cookies):
-    """
-    Cleans up broken Netscape cookies caused by mobile clipboard wrapping.
-    Reconstructs wrapped data back into flat single lines.
-    """
     if not raw_cookies:
         return ""
     cleaned_lines = []
@@ -59,13 +54,11 @@ def sanitize_mobile_cookies(raw_cookies):
         line_str = line.strip()
         if not line_str:
             continue
-        # Check if this line starts a true Netscape row
         if (line_str.startswith('.') or line_str.startswith('youtube.com') or line_str.startswith('#')):
             if current_line:
                 cleaned_lines.append(current_line)
             current_line = line_str
         else:
-            # Re-weld wrapped mobile chunks back onto the parent line string
             current_line += line_str
     if current_line:
         cleaned_lines.append(current_line)
@@ -94,12 +87,13 @@ def download():
         except Exception as e:
             return f"Internal cookie initialization failure: {str(e)}", 500
 
-    # Cleaned extraction parameters without incompatible client spoof triggers
+    # FIX: Forces yt-dlp to bypass normal signature challenges by emulating an iOS device client.
+    # Also requests the absolute best video+audio combined progressive format stream available.
     cmd = [
         'yt-dlp',
         '--no-check-certificates',
-        '--prefer-free-formats',
-        '-f', 'mp4', 
+        '--extractor-args', 'youtube:player_client=ios',
+        '-f', 'ext=mp4/b',
         '-g', 
         video_url
     ]
@@ -108,9 +102,8 @@ def download():
         cmd.extend(['--cookies', cookie_path])
     
     try:
-        # Run resolution process inside the global environment path structure
         stream_out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').strip()
-        target_stream = stream_out.split('\n')[0]  # Select primary stream endpoint
+        target_stream = stream_out.split('\n')[0]  # Safely target the first clean resolved stream url
     except subprocess.CalledProcessError as e:
         return f"Extraction Engine Failure: {e.output.decode('utf-8')}", 500
     except Exception as e:
@@ -119,11 +112,12 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Fetch title for clean download naming parameters
+    # Fetch title for the file name mapping
     try:
         title_cmd = [
             'yt-dlp', 
             '--no-check-certificates',
+            '--extractor-args', 'youtube:player_client=ios',
             '--get-title', 
             video_url
         ]
@@ -142,7 +136,7 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Direct browser pipeline redirection link execution
+    # Send the 302 streaming redirect sequence to the client device
     response = Response(status=302)
     response.headers['Location'] = target_stream
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}.mp4"'
