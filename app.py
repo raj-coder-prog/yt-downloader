@@ -1,11 +1,11 @@
 import os
 import subprocess
 import tempfile
-import re
 from flask import Flask, request, Response, render_template_string
 
 app = Flask(__name__)
 
+# Polished clean UI layout with visual loaders
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -28,17 +28,17 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <h2>YouTube Downloader</h2>
-        <p>Mobile-optimized direct streaming pipeline.</p>
+        <p>Mobile-optimized cloud bypass stream pipeline.</p>
         <form action="/download" method="GET" onsubmit="showLoading()">
             <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
             <button type="submit" id="dl-btn">Extract & Download MP4</button>
         </form>
-        <div id="loading" class="status-msg">Resolving stream and starting download pipeline... Please wait.</div>
+        <div id="loading" class="status-msg">Solving signature handshake and starting streaming pipeline... Please wait.</div>
     </div>
     <script>
         function showLoading() {
             document.getElementById('loading').style.display = 'block';
-            document.getElementById('dl-btn').innerText = 'Processing Stream...';
+            document.getElementById('dl-btn').innerText = 'Solving Challenge...';
         }
     </script>
 </body>
@@ -56,7 +56,6 @@ def sanitize_mobile_cookies(raw_cookies):
     cleaned_lines = []
     current_line = ""
     
-    # Split text by individual lines
     raw_lines = raw_cookies.split('\n')
     
     for line in raw_lines:
@@ -64,7 +63,7 @@ def sanitize_mobile_cookies(raw_cookies):
         if not line_str:
             continue
             
-        # Check if this line starts a true Netscape row (e.g. .youtube.com, youtube.com, or a comment)
+        # Check if this line starts a true Netscape row
         if (line_str.startswith('.') or 
             line_str.startswith('youtube.com') or 
             line_str.startswith('#')):
@@ -73,8 +72,7 @@ def sanitize_mobile_cookies(raw_cookies):
                 cleaned_lines.append(current_line)
             current_line = line_str
         else:
-            # If it doesn't start properly, it's a broken wrapped fragment.
-            # Append it straight to the previous cookie data block without spacing.
+            # Re-weld wrapped mobile chunks back onto the parent line
             current_line += line_str
 
     if current_line:
@@ -97,20 +95,20 @@ def download():
 
     if raw_cookie_data:
         try:
-            # Automatically repair your mobile formatting mistakes here!
             sanitized_data = sanitize_mobile_cookies(raw_cookie_data)
-            
             temp_cookie_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt')
             temp_cookie_file.write(sanitized_data)
             temp_cookie_file.close()
             cookie_path = temp_cookie_file.name
         except Exception as e:
-            return f"Internal cookie mapping failure: {str(e)}", 500
+            return f"Internal cookie initialization failure: {str(e)}", 500
 
-    # Command using standard pre-merged mobile-friendly mp4 formats (b)
+    # Command optimized with explicit fallbacks and signature-solver configurations
     cmd = [
         'yt-dlp',
-        '-f', 'b[ext=mp4]/b', 
+        '--no-check-certificates',
+        '--extractor-args', 'youtube:player_client=android,web',
+        '-f', 'best[ext=mp4]/best', 
         '-g', 
         video_url
     ]
@@ -121,7 +119,7 @@ def download():
     try:
         stream_out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8').strip()
         stream_urls = stream_out.split('\n')
-        target_stream = stream_urls[0]
+        target_stream = stream_urls[0]  # Grab primary stream block url
     except subprocess.CalledProcessError as e:
         return f"Extraction Engine Failure: {e.output.decode('utf-8')}", 500
     except Exception as e:
@@ -130,9 +128,15 @@ def download():
         if cookie_path and os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-    # Fetch title dynamically
+    # Fetch title
     try:
-        title_cmd = ['yt-dlp', '--get-title', video_url]
+        title_cmd = [
+            'yt-dlp', 
+            '--no-check-certificates',
+            '--extractor-args', 'youtube:player_client=android,web',
+            '--get-title', 
+            video_url
+        ]
         if raw_cookie_data:
             sanitized_data = sanitize_mobile_cookies(raw_cookie_data)
             with tempfile.NamedTemporaryFile(mode='w+', delete=False) as f:
