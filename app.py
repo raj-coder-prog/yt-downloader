@@ -1,8 +1,10 @@
 import os
-from flask import Flask, render_template_string
+import requests
+from flask import Flask, request, Response, render_template_string
 
 app = Flask(__name__)
 
+# Polished clean UI layout
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -19,91 +21,23 @@ HTML_TEMPLATE = """
         input[type="text"]:focus { border-color: #ff0000; outline: none; }
         button { background: #ff0000; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
         button:hover { background: #cc0000; }
-        .status-msg { margin-top: 15px; font-size: 14px; font-weight: bold; color: #ff0000; display: none; }
-        .success-box { margin-top: 20px; display: none; background: #f0fff4; border: 1px solid #c6f6d5; padding: 15px; border-radius: 6px; }
-        .download-link { display: inline-block; background: #38a169; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-top: 10px; }
-        .download-link:hover { background: #2f855a; }
+        .status-msg { margin-top: 15px; font-size: 13px; color: #888; display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>YouTube Downloader</h2>
-        <p>Bypassing server blocks via direct local client stream extraction.</p>
-        <div id="downloader-form">
-            <input type="text" id="video-url" placeholder="Paste YouTube Video Link Here" required>
-            <button type="button" onclick="extractVideo()">Extract Video MP4</button>
-        </div>
-        <div id="loading" class="status-msg" style="color: #666;">Processing handshake from your device connection...</div>
-        <div id="error" class="status-msg"></div>
-        
-        <div id="success" class="success-box">
-            <div style="color: #2f855a; font-weight: bold;" id="video-title">Video Stream Ready!</div>
-            <a href="#" id="dl-anchor" class="download-link" rel="noopener noreferrer">Save MP4 to Device</a>
-        </div>
+        <p>Bypassing server blocks via clean backend stream proxy routing.</p>
+        <form action="/download" method="GET" onsubmit="showLoading()">
+            <input type="text" name="url" placeholder="Paste YouTube Video Link Here" required>
+            <button type="submit" id="dl-btn">Extract & Download MP4</button>
+        </form>
+        <div id="loading" class="status-msg">Resolving link and starting streaming pipeline... Please wait.</div>
     </div>
-
     <script>
-        async function extractVideo() {
-            const urlInput = document.getElementById('video-url').value.trim();
-            const loadingDiv = document.getElementById('loading');
-            const errorDiv = document.getElementById('error');
-            const successDiv = document.getElementById('success');
-            const dlAnchor = document.getElementById('dl-anchor');
-
-            if (!urlInput) {
-                alert('Please paste a valid URL');
-                return;
-            }
-
-            loadingDiv.style.display = 'block';
-            errorDiv.style.display = 'none';
-            successDiv.style.display = 'none';
-
-            try {
-                // FIXED: Uses an alternative layout structure to extract links directly through an open API endpoint format
-                const cleanUrl = encodeURIComponent(urlInput);
-                const targetApiUrl = `https://allorigins.win{encodeURIComponent('https://cobalt.tools')}`;
-                
-                const response = await fetch('https://cobalt.tools', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        url: urlInput,
-                        videoQuality: '720',
-                        downloadMode: 'video',
-                        filenamePattern: 'basic'
-                    })
-                }).catch(() => {
-                    // Fallback to a secondary secure mirror API endpoint if the main pool is saturated
-                    return fetch(`https://wuk.sh`, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ url: urlInput })
-                    });
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'stream' || data.status === 'redirect' || data.url) {
-                    loadingDiv.style.display = 'none';
-                    successDiv.style.display = 'block';
-                    dlAnchor.href = data.url;
-                } else if (data.text) {
-                    throw new Error(data.text);
-                } else {
-                    throw new Error('Could not resolve download links from this specific video configuration.');
-                }
-            } catch (err) {
-                loadingDiv.style.display = 'none';
-                errorDiv.style.display = 'block';
-                errorDiv.innerText = 'Extraction Issue: ' + err.message + '. Please tap the link again to retry.';
-            }
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dl-btn').innerText = 'Processing Stream...';
         }
     </script>
 </body>
@@ -113,6 +47,46 @@ HTML_TEMPLATE = """
 @app.route('/')
 def home():
     return render_template_string(HTML_TEMPLATE)
+
+@app.route('/download')
+def download():
+    video_url = request.args.get('url')
+    if not video_url:
+        return "URL parameter missing", 400
+
+    # The backend handles the request securely using clean HTTP requests
+    # This completely eliminates "Failed to fetch" browser blocks!
+    payload = {
+        'url': video_url,
+        'videoQuality': '720',
+        'downloadMode': 'video'
+    }
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    try:
+        response = requests.post('https://cobalt.tools', json=payload, headers=headers, timeout=10)
+        data = response.json()
+        download_url = data.get('url')
+    except Exception:
+        # Fallback cluster route if primary API is under heavy traffic load
+        try:
+            response = requests.post('https://wuk.sh', json={'url': video_url}, headers=headers, timeout=10)
+            data = response.json()
+            download_url = data.get('url')
+        except Exception as e:
+            return f"Extraction Engine Failure. Link resolution timed out: {str(e)}", 500
+
+    if not download_url:
+        return "Could not resolve an active media download link from this URL string.", 400
+
+    # 302 Redirection handoff directly to your mobile phone download browser manager
+    response = Response(status=302)
+    response.headers['Location'] = download_url
+    response.headers['Content-Disposition'] = 'attachment; filename="video.mp4"'
+    return response
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
